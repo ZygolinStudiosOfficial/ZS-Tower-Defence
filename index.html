@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>ZSTower Defence</title>
+
+<style>
+body {
+    background: #111;
+    color: white;
+    text-align: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    user-select: none;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin: 5px 0;
+    color: #ffd700;
+}
+
+/* Kontener obsługujący estetyczne skalowanie fullscreen */
+#super-container {
+    display: inline-block;
+    margin: auto;
+    padding: 15px;
+    border-radius: 12px;
+    background: #151515;
+}
+#super-container:fullscreen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+}
+
+#info {
+    font-size: 22px;
+    margin: 10px;
+    background: #222;
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: inline-flex;
+    gap: 30px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+#game-container {
+    width: 800px;
+    margin: auto;
+    position: relative;
+}
+
+#game {
+    width: 800px;
+    height: 500px;
+    background: #2ed573;
+    position: relative;
+    border: 4px solid #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+}
+
+/* Dekoracje mapy */
+.deco {
+    position: absolute;
+    font-size: 24px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.85;
+}
+
+/* Zasięg wieży */
+#range-circle {
+    position: absolute;
+    border: 2px dashed rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 5;
+    display: none;
+    transform: translate(-50%, -50%);
+}
+
+/* Style wieżyczek */
+.tower {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+    box-sizing: border-box;
+}
+.tower:hover { transform: scale(1.1); }
+.tower.selected {
+    border: 3px solid #ffd700 !important;
+    box-shadow: 0 0 15px #ffd700;
+}
+
+.tower-archer { background: #3498db; border: 2px solid #2980b9; }
+.tower-mage { background: #9b59b6; border: 2px solid #8e44ad; }
+.tower-cannon { background: #e67e22; border: 2px solid #d35400; }
+.tower-ice { background: #74b9ff; border: 2px solid #0984e3; }
+.tower-tesla { background: #f1c40f; border: 2px solid #d35400; }
+.tower-support { background: #ffeaa7; border: 2px solid #fdcb6e; box-shadow: 0 0 10px #f1c40f; }
+.tower-fire { background: #e74c3c; border: 2px solid #c0392b; }
+.tower-plasma { background: #a29bfe; border: 2px solid #6c5ce7; }
+.tower-quantum { background: #1abc9c; border: 2px solid #16a085; }
+
+/* Przeciwnicy z ulepszoną teksturą gradientową */
+.enemy {
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle, #ff6b81 0%, #ff4757 60%, #ff2e43 100%);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    position: absolute;
+    z-index: 8;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 3px 6px rgba(255,71,87,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+}
+.enemy.boss {
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, #747d8c 0%, #2f3542 70%, #1e222b 100%);
+    border: 3px solid #ffd700;
+    font-size: 32px;
+    box-shadow: 0 0 25px rgba(255, 71, 87, 0.8);
+}
+
+.enemy-hp-bar {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: #ff4757;
+    border-radius: 2px;
+}
+.enemy.boss .enemy-hp-bar {
+    height: 8px;
+    top: -15px;
+}
+.enemy-hp-fill {
+    height: 100%;
+    background: #2ed573;
+    width: 100%;
+    transition: width 0.1s linear;
+}
+
+.bullet {
+    width: 8px;
+    height: 8px;
+    background: #ffa500;
+    position: absolute;
+    border-radius: 50%;
+    z-index: 9;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px #ffa500;
+}
+.bullet.ice-shard { background: #74b9ff; box-shadow: 0 0 5px #74b9ff; }
+.bullet.tesla-spark { background: #fff200; box-shadow: 0 0 7px #fff200; width: 6px; height: 6px; }
+.bullet.fire-ball { background: #ff4d4d; box-shadow: 0 0 10px #ff0000; width: 11px; height: 11px; }
+.bullet.plasma-ball { background: #a29bfe; box-shadow: 0 0 12px #6c5ce7; width: 14px; height: 14px; }
+.bullet.quantum-orb { background: #1abc9c; box-shadow: 0 0 18px #1abc9c; width: 18px; height: 18px; }
+
+/* Panele Interfejsu */
+.panel-router {
+    width: 800px;
+    margin: 15px auto 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+#build-bar {
+    background: #222;
+    padding: 12px;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+#upgrade-panel {
+    background: #222;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #ffd700;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.upgrade-creds {
+    display: flex;
+    gap: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 8px;
+}
+
+.upgrade-grid {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+}
+
+.build-btn, .upgrade-btn {
+    background: #333;
+    color: white;
+    border: 2px solid #555;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    transition: 0.2s;
+    text-align: left;
+}
+.build-btn:hover:not(:disabled), .upgrade-btn:hover:not(:disabled) {
+    background: #444;
+    border-color: #ffd700;
+}
+.build-btn.active {
+    background: #1e272e;
+    border-color: #2ed573;
+    box-shadow: 0 0 10px rgba(46, 213, 115, 0.4);
+}
+button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.control-btns {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.wave-btn, .fs-btn {
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: background 0.2s;
+}
+.wave-btn { background: #ff4757; }
+.wave-btn:hover { background: #ff6b81; }
+.fs-btn { background: #57606f; }
+.fs-btn:hover { background: #747d8c; }
+</style>
+</head>
+
+<body>
+
+<div id="super-container">
+    <h1>🏰 ZS Tower Defence</h1>
+
+    <div id="info">
+        <div>💰 Gold: <span id="gold">250</span></div>
+        <div>❤️ HP: <span id="hp">20</span></div>
+        <div>🌊 Wave: <span id="wave">1</span></div>
+        <div>🏰 Towers: <span id="tower-count">0</span>/<span id="max-towers">5</span></div>
+    </div>
+
+    <div class="control-btns">
+        <button class="wave-btn" onclick="startWave()">⚔️ Start the Wave</button>
+        <button id="btn-autoskip" class="fs-btn" onclick="toggleAutoSkip()">🔄 Auto-wave: OFF</button>
+        <button id="btn-speed-1" class="fs-btn" style="background: #2ed573;" onclick="setSpeed(1)">▶️ 1x</button>
+        <button id="btn-speed-2" class="fs-btn" onclick="setSpeed(2)">⏩ 2x</button>
+        <button id="btn-speed-3" class="fs-btn" onclick="setSpeed(3)">🚀 3x</button>
+        <button id="btn-buy-slot" class="fs-btn" style="background: #d35400;" onclick="buyTowerSlot()">➕ Buy Slot: 400💰</button>
+        <button class="fs-btn" onclick="toggleFullscreen()">🖥️ Full Screen</button>
+    </div>
+
+    <div id="game-container">
+        <div id="game" onmousemove="updateRangePreview(event)" onmouseleave="hideRangePreview()">
+            
+            <div class="deco" style="left: 40px; top: 30px;">🌲</div>
+            <div class="deco" style="left: 80px; top: 50px;">🌲</div>
+            <div class="deco" style="left: 50px; top: 220px;">🪨</div>
+            <div class="deco" style="left: 140px; top: 430px;">🌲</div>
+            <div class="deco" style="left: 310px; top: 50px;">🍄</div>
+            <div class="deco" style="left: 280px; top: 210px;">🌲</div>
+            <div class="deco" style="left: 420px; top: 280px;">🪨</div>
+            <div class="deco" style="left: 480px; top: 40px;">🌲</div>
+            <div class="deco" style="left: 620px; top: 300px;">🌲</div>
+            <div class="deco" style="left: 720px; top: 70px;">🪨</div>
+            <div class="deco" style="left: 750px; top: 400px;">🌲</div>
+
+            <svg style="position:absolute; width:800px; height:500px; top:0; left:0; pointer-events:none; z-index:1;">
+                <path d="M -20 120 L 220 120 L 220 380 L 520 380 L 520 200 L 820 200" 
+                      stroke="#eccc68" stroke-width="50" fill="none" 
+                      stroke-linejoin="round" stroke-linecap="round" />
+            </svg>
+
+            <div id="range-circle"></div>
+        </div>
+    </div>
+
+    <div class="panel-router">
+        <div id="build-bar">
+            <button id="btn-archer" class="build-btn active" onclick="selectTowerType('archer')">
+                <span style="font-size: 24px;">🏹</span>
+                <div>
+                    <strong>Archers' Tower</strong><br>
+                    <span class="lock-notice">Price: 50💰</span>
+                </div>
+            </button>
+            
+            <button id="btn-mage" class="build-btn" onclick="selectTowerType('mage')">
+                <span style="font-size: 24px;">🔮</span>
+                <div>
+                    <strong>Wizard's Tower</strong><br>
+                    <span class="lock-notice">Price: 100💰</span>
+                </div>
+            </button>
+            
+            <button id="btn-cannon" class="build-btn" onclick="selectTowerType('cannon')">
+                <span style="font-size: 24px;">💣</span>
+                <div>
+                    <strong>Hevy cannon</strong><br>
+                    <span class="lock-notice">Price: 160💰</span>
+                </div>
+            </button>
+
+            <button id="btn-ice" class="build-btn" onclick="selectTowerType('ice')">
+                <span style="font-size: 24px;">❄️</span>
+                <div>
+                    <strong>Ice Tower</strong><br>
+                    <span class="lock-notice">Wave neded 5</span>
+                </div>
+            </button>
+
+            <button id="btn-tesla" class="build-btn" onclick="selectTowerType('tesla')">
+                <span style="font-size: 24px;">🌩️</span>
+                <div>
+                    <strong>Tesla Tower</strong><br>
+                    <span class="lock-notice">Wave neded 10</span>
+                </div>
+            </button>
+
+            <button id="btn-support" class="build-btn" onclick="selectTowerType('support')">
+                <span style="font-size: 24px;">🌟</span>
+                <div>
+                    <strong>Support Tower</strong><br>
+                    <span class="lock-notice">Wave neded 15</span>
+                </div>
+            </button>
+
+            <button id="btn-fire" class="build-btn" onclick="selectTowerType('fire')">
+                <span style="font-size: 24px;">🔥</span>
+                <div>
+                    <strong>Tower of Fire</strong><br>
+                    <span class="lock-notice">Wave neded 20</span>
+                </div>
+            </button>
+
+            <button id="btn-plasma" class="build-btn" onclick="selectTowerType('plasma')">
+                <span style="font-size: 24px;">🌌</span>
+                <div>
+                    <strong>Plasma Cannon</strong><br>
+                    <span class="lock-notice">Wave neded 25</span>
+                </div>
+            </button>
+
+            <button id="btn-quantum" class="build-btn" onclick="selectTowerType('quantum')">
+                <span style="font-size: 24px;">🌀</span>
+                <div>
+                    <strong>Quantum Cannon</strong><br>
+                    <span class="lock-notice">Wave neded 30</span>
+                </div>
+            </button>
+        </div>
+
+        <div id="upgrade-panel" style="display: none;">
+            <div class="upgrade-creds">
+                <span id="upg-tower-name">Wieża</span> 
+                <span>| Obrażenia/Moc: <span id="upg-tower-dmg" style="color:#ff4757">0</span></span>
+                <span>| Zasięg: <span id="upg-tower-rng" style="color:#3498db">0</span></span>
+                <span>| Przeładowanie: <span id="upg-tower-cd" style="color:#ffa500">0ms</span></span>
+            </div>
+            <div class="upgrade-grid">
+                <button id="upg-btn-1" class="upgrade-btn" onclick="buyUpgrade(0)">Ulepszenie 1</button>
+                <button id="upg-btn-2" class="upgrade-btn" onclick="buyUpgrade(1)">Ulepszenie 2</button>
+                <button id="upg-btn-3" class="upgrade-btn" onclick="buyUpgrade(2)">Ulepszenie 3</button>
+                <button class="upgrade-btn" style="background:#ff4757; border-color: #ff6b81; font-weight: bold;" onclick="sellTower()">💰 Sprzedaj</button>
+                <button class="upgrade-btn" style="background:#555; max-width:100px; text-align:center;" onclick="deselectTower()">Zamknij X</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const game = document.getElementById("game");
+
+let gold = 250;
+let hp = 20;
+let wave = 1;
+let isWaveActive = false;
+
+let gameSpeed = 1;
+let autoSkip = false;
+let gameTime = 0;
+
+let maxTowers = 5;
+let slotCost = 400;
+
+let spawnQueue = 0;
+let spawnCooldown = 0;
+
+let towers = [];
+let enemies = [];
+let bullets = [];
+let selectedTowerForUpgrade = null;
+
+const towerTypes = {
+    archer: { name: "Wieża Łuczników", cost: 50, range: 150, damage: 15, cooldown: 600, emoji: "🏹", className: "tower-archer", unlock: 1 },
+    mage:   { name: "Wieża Maga",      cost: 100, range: 110, damage: 45, cooldown: 1200, emoji: "🔮", className: "tower-mage", unlock: 1 },
+    cannon: { name: "Ciężkie Działo", cost: 160, range: 170, damage: 110, cooldown: 2000, emoji: "💣", className: "tower-cannon", unlock: 1 },
+    ice:    { name: "Wieża Lodowa",    cost: 140, range: 130, damage: 10, cooldown: 800, emoji: "❄️", className: "tower-ice", unlock: 5 },
+    tesla:  { name: "Wieża Tesli",     cost: 210, range: 140, damage: 40, cooldown: 500, emoji: "🌩️", className: "tower-tesla", unlock: 10 },
+    support:{ name: "Wieża Wsparcia",  cost: 260, range: 90, damage: 0, cooldown: 1000, emoji: "🌟", className: "tower-support", unlock: 15 },
+    fire:   { name: "Wieża Ognia",     cost: 380, range: 160, damage: 210, cooldown: 1600, emoji: "🔥", className: "tower-fire", unlock: 20 },
+    plasma: { name: "Działo Plazmowe", cost: 480, range: 220, damage: 420, cooldown: 3200, emoji: "🌌", className: "tower-plasma", unlock: 25 },
+    quantum:{ name: "Działo Kwantowe", cost: 750, range: 250, damage: 1350, cooldown: 4500, emoji: "🌀", className: "tower-quantum", unlock: 30 }
+};
+let selectedType = "archer";
+
+const upgradeTrees = {
+    archer: [
+        { name: "🏹 Silver Caves", cost: 40, effect: (t) => { t.damage += 8; }, desc: "+8 Attack" },
+        { name: "🦅 Eagle Eye", cost: 35, effect: (t) => { t.range += 35; }, desc: "+35 Range" },
+        { name: "⚡ Quick Tension", cost: 55, effect: (t) => { t.cooldown -= 150; }, desc: "-150ms Cd" }
+    ],
+    mage: [
+        { name: "🔮 The Secret Power", cost: 70, effect: (t) => { t.damage += 30; }, desc: "+30 Attack" },
+        { name: "🌀 The Mana Magnetizm", cost: 50, effect: (t) => { t.range += 30; }, desc: "+30 Range" },
+        { name: "⏳ Ritual of Focus", cost: 80, effect: (t) => { t.cooldown -= 300; }, desc: "-300ms Cd" }
+    ],
+    cannon: [
+        { name: "💥 Heavy Gunpowder", cost: 90, effect: (t) => { t.damage += 70; }, desc: "+70 Attack" },
+        { name: "📏 Rifled Barrel", cost: 65, effect: (t) => { t.range += 45; }, desc: "+45 Range" },
+        { name: "⚙️ Mechanical Feeder", cost: 100, effect: (t) => { t.cooldown -= 500; }, desc: "-500ms Cd" }
+    ],
+    ice: [
+        { name: "🥶 Ice Icicle", cost: 60, effect: (t) => { t.damage += 15; }, desc: "+15 Attack" },
+        { name: "❄️ The Eternal Blizzard", cost: 75, effect: (t) => { t.range += 40; }, desc: "+40 Range" },
+        { name: "🧊 Deep Freezing", cost: 90, effect: (t) => { t.cooldown -= 200; }, desc: "-200ms Cd" }
+    ],
+    tesla: [
+        { name: "⚡ Overload", cost: 90, effect: (t) => { t.damage += 25; }, desc: "+25 Attack" },
+        { name: "🧲 Resonance Coil", cost: 80, effect: (t) => { t.range += 40; }, desc: "+40 Range" },
+        { name: "🔋 Supercapacitors", cost: 110, effect: (t) => { t.cooldown -= 100; }, desc: "-100ms Cd" }
+    ],
+    support: [
+        { name: "📡 Wide Aura", cost: 95, effect: (t) => { t.range += 50; }, desc: "+50 Aura Range" },
+        { name: "⚔️ Combat Inspiration", cost: 120, effect: (t) => { t.buffPower = (t.buffPower || 1) + 0.15; }, desc: "A stronger tower bonus" },
+        { name: "🪙 Local Taxes", cost: 150, effect: (t) => { t.incomeGen = true; }, desc: "+15 gold per wave" }
+    ],
+    fire: [
+        { name: "🔥 Wildfire", cost: 140, effect: (t) => { t.damage += 120; }, desc: "+120 Attack" },
+        { name: "💨 A Breath of Warmth", cost: 110, effect: (t) => { t.range += 45; }, desc: "+45 Range" },
+        { name: "⏳ Crematorium Chamber", cost: 150, effect: (t) => { t.cooldown -= 300; }, desc: "-300ms Cd" }
+    ],
+    plasma: [
+        { name: "☀️ Star Reactor", cost: 200, effect: (t) => { t.damage += 250; }, desc: "+250 Attack" },
+        { name: "👁️ Hyper-range", cost: 150, effect: (t) => { t.range += 60; }, desc: "+60 Range" },
+        { name: "🔋 Supercapacitors", cost: 220, effect: (t) => { t.cooldown -= 800; }, desc: "-800ms Cd" }
+    ],
+    quantum: [
+        { name: "🌌 Singularity", cost: 320, effect: (t) => { t.damage += 800; }, desc: "+800 Attack" },
+        { name: "🔭 The Bend in Space", cost: 250, effect: (t) => { t.range += 80; }, desc: "+80 Range" },
+        { name: "💿 Tachyon Accelerator", cost: 350, effect: (t) => { t.cooldown -= 1200; }, desc: "-1200ms Cd" }
+    ]
+};
+
+const waypoints = [
+    {x: 0, y: 120}, {x: 220, y: 120}, {x: 220, y: 380},
+    {x: 520, y: 380}, {x: 520, y: 200}, {x: 820, y: 200}
+];
+
+function toggleFullscreen() {
+    let container = document.getElementById("super-container");
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+            alert(`Nie udało się włączyć pełnego ekranu: ${err.message}`);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function setSpeed(speed) {
+    gameSpeed = speed;
+    document.getElementById("btn-speed-1").style.background = speed === 1 ? "#2ed573" : "#57606f";
+    document.getElementById("btn-speed-2").style.background = speed === 2 ? "#2ed573" : "#57606f";
+    document.getElementById("btn-speed-3").style.background = speed === 3 ? "#2ed573" : "#57606f";
+}
+
+function toggleAutoSkip() {
+    autoSkip = !autoSkip;
+    let btn = document.getElementById("btn-autoskip");
+    if (autoSkip) {
+        btn.innerHTML = "🔄 Auto-Wave: WŁ";
+        btn.style.background = "#2ed573";
+        if (!isWaveActive) startWave();
+    } else {
+        btn.innerHTML = "🔄 Auto-Wave: WYŁ";
+        btn.style.background = "#57606f";
+    }
+}
+
+function updateUI() {
+    document.getElementById("gold").innerHTML = gold;
+    document.getElementById("hp").innerHTML = hp;
+    document.getElementById("wave").innerHTML = wave;
+    document.getElementById("tower-count").innerHTML = towers.length;
+    document.getElementById("max-towers").innerHTML = maxTowers;
+
+    // Aktualizacja przycisku zakupu slotów
+    let slotBtn = document.getElementById("btn-buy-slot");
+    slotBtn.innerHTML = `➕ Buy Slot: ${slotCost}💰`;
+    slotBtn.disabled = (gold < slotCost);
+
+    for(let key in towerTypes) {
+        let btn = document.getElementById(`btn-${key}`);
+        let data = towerTypes[key];
+        let notice = btn.querySelector(".lock-notice");
+
+        if (wave < data.unlock) {
+            btn.disabled = true;
+            notice.innerHTML = `🔒 Wave ${data.unlock}`;
+            notice.style.color = "#ff4757";
+        } else {
+            notice.innerHTML = `Price: ${data.cost}💰`;
+            notice.style.color = "#ffd700";
+            btn.disabled = (gold < data.cost);
+        }
+    }
+    if (selectedTowerForUpgrade) renderUpgradePanel();
+}
+
+function buyTowerSlot() {
+    if (gold >= slotCost) {
+        gold -= slotCost;
+        maxTowers++;
+        slotCost = 400 + (maxTowers - 5) * 200; 
+        updateUI();
+    }
+}
+
+function selectTowerType(type) {
+    deselectTower();
+    selectedType = type;
+    document.querySelectorAll(".build-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById(`btn-${type}`).classList.add("active");
+}
+
+function updateRangePreview(e) {
+    if (e.target !== game && e.target.tagName !== 'path') return;
+    let rect = game.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    let circle = document.getElementById("range-circle");
+    
+    let currentRange = selectedTowerForUpgrade ? selectedTowerForUpgrade.range : towerTypes[selectedType].range;
+
+    circle.style.display = "block";
+    circle.style.left = x + "px";
+    circle.style.top = y + "px";
+    circle.style.width = (currentRange * 2) + "px";
+    circle.style.height = (currentRange * 2) + "px";
+}
+
+function hideRangePreview() {
+    if (!selectedTowerForUpgrade) {
+        document.getElementById("range-circle").style.display = "none";
+    }
+}
+
+game.onclick = function(e) {
+    let rect = game.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+
+    if (e.target.classList.contains("tower")) {
+        let tId = e.target.getAttribute("data-id");
+        let clickedTower = towers.find(t => t.id == tId);
+        if (clickedTower) selectTowerForUpgrade(clickedTower);
+        return;
+    }
+    
+    if (e.target.classList.contains("enemy")) return;
+
+    if (towers.length >= maxTowers) {
+        alert(`🔒 You've reached the ${maxTowers} tower limit! Buy additional space with gold or sell an existing tower.`);
+        return;
+    }
+
+    let stats = towerTypes[selectedType];
+
+    // NOWOŚĆ: Blokada stawiania wieży wsparcia obok innej wieży wsparcia
+    if (selectedType === 'support') {
+        for (let i = 0; i < towers.length; i++) {
+            if (towers[i].type === 'support') {
+                let distance = Math.sqrt(Math.pow(towers[i].x - x, 2) + Math.pow(towers[i].y - y, 2));
+                if (distance <= stats.range) {
+                    alert(`🚫 You cannot place a Support Tower this close to another Support Tower! The minimum distance is ${stats.range} pixels.`);
+                    return;
+                }
+            }
+        }
+    }
+
+    if (wave >= stats.unlock && gold >= stats.cost) {
+        gold -= stats.cost;
+        
+        let tId = Date.now() + Math.random();
+        let tDiv = document.createElement("div");
+        tDiv.className = `tower ${stats.className}`;
+        tDiv.style.left = (x - 20) + "px";
+        tDiv.style.top = (y - 20) + "px";
+        tDiv.innerHTML = stats.emoji;
+        tDiv.setAttribute("data-id", tId);
+        
+        game.appendChild(tDiv);
+
+        let newTower = {
+            id: tId, x: x, y: y,
+            type: selectedType,
+            damage: stats.damage,
+            range: stats.range,
+            cooldown: stats.cooldown,
+            lastShot: 0,
+            upgradesBought: [false, false, false],
+            element: tDiv
+        };
+
+        if (selectedType === 'support') {
+            newTower.buffPower = 1.0;
+            newTower.incomeGen = false;
+        }
+
+        towers.push(newTower);
+        updateUI();
+    }
+};
+
+function selectTowerForUpgrade(tower) {
+    deselectTower();
+    selectedTowerForUpgrade = tower;
+    tower.element.classList.add("selected");
+    document.getElementById("upgrade-panel").style.display = "flex";
+    
+    let circle = document.getElementById("range-circle");
+    circle.style.display = "block";
+    circle.style.left = tower.x + "px";
+    circle.style.top = tower.y + "px";
+    circle.style.width = (tower.range * 2) + "px";
+    circle.style.height = (tower.range * 2) + "px";
+
+    renderUpgradePanel();
+}
+
+function deselectTower() {
+    if (selectedTowerForUpgrade) {
+        selectedTowerForUpgrade.element.classList.remove("selected");
+    }
+    selectedTowerForUpgrade = null;
+    document.getElementById("upgrade-panel").style.display = "none";
+    document.getElementById("range-circle").style.display = "none";
+}
+
+function renderUpgradePanel() {
+    let t = selectedTowerForUpgrade;
+    let tree = upgradeTrees[t.type];
+    
+    document.getElementById("upg-tower-name").innerHTML = `⚙️ Ulepszasz: ${towerTypes[t.type].name}`;
+    document.getElementById("upg-tower-dmg").innerHTML = t.type === 'support' ? `Aura` : t.damage;
+    document.getElementById("upg-tower-rng").innerHTML = t.range;
+    document.getElementById("upg-tower-cd").innerHTML = t.type === 'support' ? `Stała` : t.cooldown + "ms";
+
+    for (let i = 0; i < 3; i++) {
+        let btn = document.getElementById(`upg-btn-${i+1}`);
+        let upgData = tree[i];
+        
+        if (t.upgradesBought[i]) {
+            btn.innerHTML = `✅ ${upgData.name}<br><small>Zakupione</small>`;
+            btn.disabled = true;
+        } else {
+            btn.innerHTML = `<strong>${upgData.name}</strong><br>Price: ${upgData.cost}💰 (${upgData.desc})`;
+            btn.disabled = (gold < upgData.cost);
+        }
+    }
+}
+
+function buyUpgrade(index) {
+    if (!selectedTowerForUpgrade) return;
+    let t = selectedTowerForUpgrade;
+    let upgData = upgradeTrees[t.type][index];
+
+    if (gold >= upgData.cost && !t.upgradesBought[index]) {
+        gold -= upgData.cost;
+        t.upgradesBought[index] = true;
+        upgData.effect(t);
+        
+        let circle = document.getElementById("range-circle");
+        circle.style.width = (t.range * 2) + "px";
+        circle.style.height = (t.range * 2) + "px";
+
+        updateUI();
+    }
+}
+
+function sellTower() {
+    if (!selectedTowerForUpgrade) return;
+    let t = selectedTowerForUpgrade;
+    
+    let baseCost = towerTypes[t.type].cost;
+    let upgradesCost = 0;
+    let tree = upgradeTrees[t.type];
+    for (let i = 0; i < 3; i++) {
+        if (t.upgradesBought[i]) upgradesCost += tree[i].cost;
+    }
+    
+    let refund = Math.floor((baseCost + upgradesCost) * 0.7);
+    gold += refund;
+
+    t.element.remove();
+    towers = towers.filter(item => item.id !== t.id);
+
+    deselectTower();
+    updateUI();
+}
+
+function spawnEnemy(isBoss = false) {
+    let eDiv = document.createElement("div");
+    eDiv.className = isBoss ? "enemy boss" : "enemy";
+    
+    let hpBar = document.createElement("div");
+    hpBar.className = "enemy-hp-bar";
+    let hpFill = document.createElement("div");
+    hpFill.className = "enemy-hp-fill";
+    hpBar.appendChild(hpFill);
+    eDiv.appendChild(hpBar);
+
+    let enemyEmoji = "💀"; 
+    if (isBoss) {
+        enemyEmoji = "🐉";
+    } else if (wave >= 20) {
+        enemyEmoji = "👺";
+    } else if (wave >= 10) {
+        enemyEmoji = "🧌";
+    } else if (wave >= 5) {
+        enemyEmoji = "🕷️";
+    }
+
+    eDiv.innerHTML = enemyEmoji + hpBar.outerHTML;
+    game.appendChild(eDiv);
+    hpFill = eDiv.querySelector(".enemy-hp-fill");
+
+    // NOWOŚĆ: Zdrowie bosa zwiększone trzykrotnie z 9000 do 27000
+    let maxHp = isBoss ? 27000 : (45 + wave * 32);
+    let speedCalc = isBoss ? 0.6 : (1.3 + (wave * 0.04));
+
+    enemies.push({
+        element: eDiv,
+        hpFill: hpFill,
+        x: waypoints[0].x,
+        y: waypoints[0].y,
+        hp: maxHp,
+        maxHp: maxHp,
+        baseSpeed: speedCalc,
+        speed: speedCalc,
+        slowTicks: 0,
+        waypointIndex: 1,
+        isBoss: isBoss
+    });
+}
+
+function startWave() {
+    if (isWaveActive) return;
+
+    if (wave === 15 || wave === 30) {
+        hp = 20;
+        alert(`💖 Wava ${wave}: Your Base has been Healed!`);
+    }
+
+    isWaveActive = true;
+
+    if (wave === 30) {
+        alert("⚠️ Wave 30: THE KINGDOM'S BOSS IS COMING — THE CURSED DRAGON! 🐉");
+        spawnEnemy(true);
+    } else {
+        spawnQueue = 6 + wave * 2;
+        spawnCooldown = 0;
+    }
+
+    towers.forEach(t => {
+        if (t.type === 'support' && t.incomeGen) {
+            gold += 15;
+        }
+    });
+    updateUI();
+}
+
+function checkGameOver() {
+    if (hp <= 0) {
+        alert("💥 Game Oger. Your base has ben destroyed.");
+        location.reload();
+    }
+}
+
+function checkWaveEnd() {
+    if (enemies.length === 0 && spawnQueue === 0 && isWaveActive) {
+        isWaveActive = false;
+        gold += 100 + wave * 10; 
+        wave++;
+        updateUI();
+        if (autoSkip) startWave();
+    }
+}
+
+// GŁÓWNA PĘTLA GRY (30ms z obsługą przyspieszenia)
+setInterval(() => {
+    for (let step = 0; step < gameSpeed; step++) {
+        gameTime += 30;
+
+        if (spawnQueue > 0) {
+            if (spawnCooldown <= 0) {
+                spawnEnemy(false);
+                spawnQueue--;
+                spawnCooldown = 16;
+            } else {
+                spawnCooldown--;
+            }
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i];
+            
+            if (e.slowTicks > 0) {
+                e.slowTicks--;
+                e.speed = e.baseSpeed * 0.5;
+            } else {
+                e.speed = e.baseSpeed;
+            }
+
+            let targetWP = waypoints[e.waypointIndex];
+            let dx = targetWP.x - e.x;
+            let dy = targetWP.y - e.y;
+            let distance = Math.sqrt(dx*dx + dy*dy);
+
+            if (distance <= e.speed) {
+                e.x = targetWP.x; e.y = targetWP.y;
+                e.waypointIndex++;
+                if (e.waypointIndex >= waypoints.length) {
+                    e.element.remove();
+                    enemies.splice(i, 1);
+                    
+                    hp -= e.isBoss ? 20 : 1;
+                    updateUI();
+                    
+                    checkGameOver();
+                    checkWaveEnd();
+                    continue;
+                }
+            } else {
+                e.x += (dx / distance) * e.speed;
+                e.y += (dy / distance) * e.speed;
+            }
+            e.element.style.left = e.x + "px";
+            e.element.style.top = e.y + "px";
+        }
+
+        towers.forEach(t => {
+            if (t.type !== 'support') {
+                t.currentBuffDmg = 1.0;
+                t.currentBuffCd = 1.0;
+            }
+        });
+
+        towers.forEach(sp => {
+            if (sp.type === 'support') {
+                let mPower = sp.buffPower || 1.0;
+                towers.forEach(t => {
+                    if (t.type !== 'support') {
+                        let dist = Math.sqrt(Math.pow(sp.x - t.x, 2) + Math.pow(sp.y - t.y, 2));
+                        if (dist <= sp.range) {
+                            t.currentBuffDmg += (0.20 * mPower);
+                            t.currentBuffCd *= 0.85; 
+                        }
+                    }
+                });
+            }
+        });
+
+        towers.forEach(t => {
+            if (t.type === 'support') return; 
+            
+            let finalCooldown = t.cooldown * (t.currentBuffCd || 1);
+            if (gameTime - t.lastShot < finalCooldown) return;
+
+            let target = null;
+            for (let e of enemies) {
+                let dist = Math.sqrt(Math.pow(t.x - e.x, 2) + Math.pow(t.y - e.y, 2));
+                if (dist <= t.range) {
+                    target = e;
+                    break;
+                }
+            }
+
+            if (target) {
+                let bDiv = document.createElement("div");
+                let bulletClass = "bullet";
+                if (t.type === 'ice') bulletClass += " ice-shard";
+                if (t.type === 'tesla') bulletClass += " tesla-spark";
+                if (t.type === 'fire') bulletClass += " fire-ball";
+                if (t.type === 'plasma') bulletClass += " plasma-ball";
+                if (t.type === 'quantum') bulletClass += " quantum-orb";
+
+                bDiv.className = bulletClass;
+                bDiv.style.left = t.x + "px";
+                bDiv.style.top = t.y + "px";
+                game.appendChild(bDiv);
+
+                bullets.push({
+                    element: bDiv,
+                    x: t.x, y: t.y,
+                    target: target,
+                    damage: t.damage * (t.currentBuffDmg || 1.0),
+                    type: t.type
+                });
+
+                t.lastShot = gameTime;
+            }
+        });
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            if (!enemies.includes(b.target)) {
+                b.element.remove();
+                bullets.splice(i, 1);
+                continue;
+            }
+
+            let dx = b.target.x - b.x;
+            let dy = b.target.y - b.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            let bSpeed = 7;
+
+            if (dist <= bSpeed) {
+                b.target.hp -= b.damage;
+                let fillPercent = Math.max(0, (b.target.hp / b.target.maxHp) * 100);
+                b.target.hpFill.style.width = fillPercent + "%";
+
+                if (b.type === 'ice') b.target.slowTicks = 45; 
+
+                if (b.target.hp <= 0) {
+                    b.target.element.remove();
+                    gold += b.target.isBoss ? 1000 : Math.floor(15 + wave * 1.5);
+                    enemies = enemies.filter(item => item !== b.target);
+                    updateUI();
+                    checkWaveEnd();
+                }
+
+                b.element.remove();
+                bullets.splice(i, 1);
+            } else {
+                b.x += (dx / dist) * bSpeed;
+                b.y += (dy / dist) * bSpeed;
+                b.element.style.left = b.x + "px";
+                b.element.style.top = b.y + "px";
+            }
+        }
+    }
+}, 30);
+
+updateUI();
+</script>
+
+</body>
+</html>
